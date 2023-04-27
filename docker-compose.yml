@@ -1,0 +1,82 @@
+version: "3.3"
+services:
+  spark-master:
+    image: cluster-apache-spark:3.3.1
+    networks: 
+      - web
+    ports:
+      - "9090:8080"
+      - "7077:7077"
+    volumes:
+     # - ./apps:/opt/spark-apps
+       - ./data:/opt/spark-data
+       - ${STORAGE}/dags:/opt/spark-apps
+       - ${STORAGE}:/storage
+    environment:
+     #- SPARK_LOCAL_IP=spark-master
+      - SPARK_WORKLOAD=master
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.spark-master.rule=${MASTER_HOST}
+      - traefik.http.routers.spark-master.entrypoints=websecure
+      - traefik.http.services.spark-master.loadbalancer.server.port=8080
+      - traefik.http.routers.spark-master.tls=true
+  spark-worker-1:
+    image: cluster-apache-spark:3.3.1
+    networks: 
+      - web
+    ports:
+      - "9091:8080"
+      - "7000:7000"
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=1G
+      - SPARK_EXECUTOR_MEMORY=1G
+      - SPARK_WORKLOAD=worker
+        #- SPARK_LOCAL_IP=spark-worker-1
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.spark-worker-1.rule=${HOST_WORKER_1}
+      - traefik.http.routers.spark-worker-1.entrypoints=websecure
+      - traefik.http.services.spark-worker-1.loadbalancer.server.port=8080
+      - traefik.http.routers.spark-worker-1.tls=true
+    volumes:
+     # - ./apps:/opt/spark-apps
+       - ${STORAGE}/dags:/opt/spark-apps
+       - ./data:/opt/spark-data
+       - ${STORAGE}:/storage
+  spark-worker-2:
+    image: cluster-apache-spark:3.3.1
+    networks:
+      - web
+    ports:
+      - "9092:8080"
+      - "7001:7000"
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=1G
+      - SPARK_EXECUTOR_MEMORY=1G
+      - SPARK_WORKLOAD=worker
+        #- SPARK_LOCAL_IP=spark-worker-2
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.spark-worker-2.rule=${HOST_WORKER_2}
+      - traefik.http.routers.spark-worker-2.entrypoints=websecure
+      - traefik.http.services.spark-worker-2.loadbalancer.server.port=8080
+      - traefik.http.routers.spark-worker-2.tls=true
+    volumes:
+     # - ./apps:/opt/spark-apps
+       - ${STORAGE}/dags:/opt/spark-apps
+       - ./data:/opt/spark-data
+       - ${STORAGE}:/storage
+networks:
+  web:
+    external: true
